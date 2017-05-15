@@ -93,6 +93,11 @@ class CPTMailChimpAPI {
 		return $args;
 	}
 
+	public function get_subscribers($listID){
+		$args = array();
+		return $this->handle_response(wp_remote_get($this->apiURI.'lists/'.$listID.'/members', $this->add_mailchimp_authentication($args)));
+	}
+
 	private function handle_response($response){
 		//TODO clean up this error handling to allow passing error messages back to the user
 		if( is_wp_error($response) ){
@@ -107,4 +112,5 @@ class CPTMailChimpAPI {
 			}
 		}
 	}
+
 }

@@ -42,6 +42,7 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 			add_action( 'admin_notices', array($this, 'display_notice') );
 			add_filter( 'redirect_post_location', array($this, 'persist_notice') );
 			add_action( 'add_meta_boxes', array($this, 'meta_box') );
+			add_action( 'admin_menu', array($this, 'subscriber_list_menu') );
 		}
 
 		public function add_custom_columns($columns){
@@ -211,6 +212,16 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 			$newsletterSent = $this->get_sent_date($post->ID);
 			$campaignID = $this->get_campaign_id($post->ID);
 			require('templates/meta-box.php');
+		}
+
+		public function subscriber_list_menu(){
+			add_submenu_page('index.php', 'Newsletter Subscribers', 'Subscribers', 'edit_pages', 'subscribers',array($this,'subscriber_list_content'));
+		}
+
+		public function subscriber_list_content(){
+			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$subscribers = $api->get_subscribers(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID);
+			require('templates/subscriber-list.php');
 		}
 	}
 	new CPTMailChimpNewsletters();
