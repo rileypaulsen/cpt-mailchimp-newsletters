@@ -12,7 +12,6 @@
  * Domain Path:       /languages
  */
 if( !class_exists('CPTMailChimpNewsletters') ){
-	require_once('secret.php');
 	require_once('inc/CPTMailChimpAPI.php');
 
 	class CPTMailChimpNewsletters {
@@ -20,16 +19,29 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 		private $noticeStatus;
 		private $noticeData;
 
+		private $CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY;
+		private $CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID;
+		private $CPT_MAILCHIMP_NEWSLETTERS_FROM_NAME;
+		private $CPT_MAILCHIMP_NEWSLETTERS_REPLY_EMAIL;
+
 		const SENT_KEY = 'newsletter-sent';
 		const DATE_STRING = 'F j, Y @ g:i a';
 		const POST_TYPE = 'newsletter';
-		const NONCE_KEY = 'cpt_mailchimp_newsletter_integration';
-		const CAMPAIGN_KEY = 'cpt_mailchimp_newsletter_campaign_id';
-		const CAPABILITY = 'edit_post';
+		const NONCE_KEY = 'cptmailchimp_newsletter_integration';
+		const CAMPAIGN_KEY = 'cptmailchimp_newsletter_campaign_id';
+		const CAPABILITY = 'edit_pages';
+		const SAVE_FIELD_NAME = 'cptmailchimp-save-settings';
+		const MENU_SLUG_PREFIX = 'cptmailchimp-';
+
+		const API_KEY_FIELD_NAME = 'cptmailchimp-api-key';
+		const LIST_ID_FIELD_NAME = 'cptmailchimp-list-id';
+		const FROM_NAME_FIELD_NAME = 'cptmailchimp-from-name';
+		const REPLY_EMAIL_FIELD_NAME = 'cptmailchimp-reply-email';
 
 		public function __construct() {
 			date_default_timezone_set( "America/Indiana/Indianapolis" );
 			add_action( 'init', array( $this, 'init' ) );
+			add_action( 'admin_init', array( $this, 'setup_settings' ) );
 		}
 
 		public function init(){
@@ -43,6 +55,16 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 			add_filter( 'redirect_post_location', array($this, 'persist_notice') );
 			add_action( 'add_meta_boxes', array($this, 'meta_box') );
 			add_action( 'admin_menu', array($this, 'subscriber_list_menu') );
+			add_action( 'admin_menu', array($this, 'options_menu') );
+
+			$this->save_settings();
+		}
+
+		public function setup_settings(){
+			$this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY = get_option(self::API_KEY_FIELD_NAME);
+			$this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID = get_option(self::LIST_ID_FIELD_NAME);
+			$this->CPT_MAILCHIMP_NEWSLETTERS_FROM_NAME = get_option(self::FROM_NAME_FIELD_NAME);
+			$this->CPT_MAILCHIMP_NEWSLETTERS_REPLY_EMAIL = get_option(self::REPLY_EMAIL_FIELD_NAME);
 		}
 
 		public function add_custom_columns($columns){
@@ -116,8 +138,8 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 			if( !empty($this->get_campaign_id($post_id)) ){
 				return;
 			}
-			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
-			$campaignID = $api->create_campaign(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID, $post->post_title, CPT_MAILCHIMP_NEWSLETTERS_FROM_NAME, CPT_MAILCHIMP_NEWSLETTERS_REPLY_EMAIL, get_permalink($post_id));
+			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$campaignID = $api->create_campaign($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID, $post->post_title, $this->CPT_MAILCHIMP_NEWSLETTERS_FROM_NAME, $this->CPT_MAILCHIMP_NEWSLETTERS_REPLY_EMAIL, get_permalink($post_id));
 			if( !empty($campaignID) ){
 				update_post_meta($post_id, self::CAMPAIGN_KEY, $campaignID);
 			}
@@ -128,7 +150,7 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 			if( self::POST_TYPE !== $post_type || empty($campaign_id = $this->get_campaign_id($post_id)) ){
 				return;
 			}
-			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
 			$campaignID = $api->delete_campaign($campaign_id);
 		}
 
@@ -139,7 +161,7 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 				return;
 			}
 
-			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
 			$result = $api->test_campaign($this->get_campaign_id($post_id), $emails);
 
 			$this->noticeType = 'test';
@@ -148,7 +170,7 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 		}
 
 		private function send_campaign($post_id){
-			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
 			$result = $api->send_campaign($this->get_campaign_id($post_id));
 
 			$this->noticeType = 'campaign';
@@ -215,13 +237,40 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 		}
 
 		public function subscriber_list_menu(){
-			add_submenu_page('index.php', 'Newsletter Subscribers', 'Subscribers', 'edit_pages', 'subscribers',array($this,'subscriber_list_content'));
+			add_submenu_page('index.php', 'Newsletter Subscribers', 'Subscribers', self::CAPABILITY, self::MENU_SLUG_PREFIX.'subscribers',array($this,'subscriber_list_content'));
 		}
 
 		public function subscriber_list_content(){
-			$api = new CPTMailChimpAPI(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
-			$subscribers = $api->get_subscribers(CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID);
+			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$subscribers = $api->get_subscribers($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID);
 			require('templates/subscriber-list.php');
+		}
+
+		public function options_menu(){
+			add_options_page('CPT MailChimp Newsletters', 'CPT Newsletters', 'manage_options', self::MENU_SLUG_PREFIX.'settings', array($this, 'settings_content'));
+		}
+
+		public function settings_content(){
+			require('templates/settings.php');
+		}
+
+		private function save_settings(){
+			if( !isset($_POST[self::SAVE_FIELD_NAME])  ){
+				return;
+			}
+			if( !isset($_POST[self::API_KEY_FIELD_NAME], $_POST[self::LIST_ID_FIELD_NAME], $_POST[self::FROM_NAME_FIELD_NAME], $_POST[self::REPLY_EMAIL_FIELD_NAME]) ){
+				return;
+			}
+
+			$apiKey = filter_var($_POST[self::API_KEY_FIELD_NAME], FILTER_SANITIZE_STRING);
+			$listID = filter_var($_POST[self::LIST_ID_FIELD_NAME], FILTER_SANITIZE_STRING);
+			$fromName = filter_var($_POST[self::FROM_NAME_FIELD_NAME], FILTER_SANITIZE_STRING);
+			$replyEmail = filter_var($_POST[self::REPLY_EMAIL_FIELD_NAME], FILTER_SANITIZE_EMAIL);
+
+			update_option(self::API_KEY_FIELD_NAME, $apiKey);
+			update_option(self::LIST_ID_FIELD_NAME, $listID);
+			update_option(self::FROM_NAME_FIELD_NAME, $fromName);
+			update_option(self::REPLY_EMAIL_FIELD_NAME, $replyEmail);
 		}
 	}
 	new CPTMailChimpNewsletters();
