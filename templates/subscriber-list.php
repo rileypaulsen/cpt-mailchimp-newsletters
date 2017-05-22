@@ -1,6 +1,6 @@
 <div class="wrap">
 	<h1>Newsletter Subscribers</h1>
-	<p>Below is a list of subscribers that have signed up from the form on the website.</p>
+	<p>Below is a list of subscribers to the <b><?= $list->name; ?></b> MailChimp list.</p>
 	<h2><?= count($subscribers->members); ?> Subscribers</h2>
 	<table class="widefat fixed" cellspacing="0">
 		<thead>

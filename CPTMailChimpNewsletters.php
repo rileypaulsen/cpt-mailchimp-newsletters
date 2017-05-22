@@ -242,6 +242,7 @@ if( !class_exists('CPTMailChimpNewsletters') ){
 
 		public function subscriber_list_content(){
 			$api = new CPTMailChimpAPI($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_API_KEY);
+			$list = $api->get_list($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID);
 			$subscribers = $api->get_subscribers($this->CPT_MAILCHIMP_NEWSLETTERS_MAILCHIMP_LIST_ID);
 			require('templates/subscriber-list.php');
 		}
