@@ -100,7 +100,7 @@ class CPTMailChimpAPI {
 
 	public function get_subscribers($listID){
 		$args = array();
-		return $this->handle_response(wp_remote_get($this->apiURI.'lists/'.$listID.'/members', $this->add_mailchimp_authentication($args)));
+		return $this->handle_response(wp_remote_get($this->apiURI.'lists/'.$listID.'/members?count=10000', $this->add_mailchimp_authentication($args)));
 	}
 
 	private function handle_response($response){
