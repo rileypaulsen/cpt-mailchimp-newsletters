@@ -82,8 +82,8 @@ class CPTMailChimpAPI {
 		$args = array(
 			'body'=>json_encode($body)
 		);
-		$response = $this->handle_response(wp_remote_post($this->apiURI.'campaigns/'.$campaignID.'/actions/test', $this->add_mailchimp_authentication($args)));
-		return !$this->hasError;
+		wp_remote_post($this->apiURI.'campaigns/'.$campaignID.'/actions/test', $this->add_mailchimp_authentication($args));
+		return true;
 	}
 
 	private function add_mailchimp_authentication($args){
